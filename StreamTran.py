@@ -73,6 +73,7 @@ def InterpolateTribPump(x,Q_t,nx,L):
 def InterpolateGwConc(x,C_gw,numSteps,nx,L):
     ''' Assigns concnetration for each groundwater inflow step (numSteps) given distance (x) and groundwater concentration (C_gw) pairs using nearest neighbor interpolation.  Returns the groundwater concentration for whole reach.'''
     # first nearest neighbor interpolation for all groundwater steps...
+    nx = int(nx)
     stepL = int(round(L/numSteps))
     stepsI = arange(1,numSteps+1)*stepL
     stepsI[-1] = int(round(L))
