@@ -1,3 +1,14 @@
+
+#######################################################################
+#######################################################################
+# Example input deck - runs a two stage simulation.  First basic model 
+# domain and parameters are defined.  After setting up the simulation,
+# groundwater inflow is calculated using Rn and discharge measurments.
+# The groundater age is then estimated using an exponential (or dispersion) 
+# mixing model from the SF6 measurments.
+# This input requires the tracer_tools package to be in the python path.
+#######################################################################
+#######################################################################
 from StreamTran import *
 from pylab import *
 import numpy as np
@@ -16,7 +27,9 @@ import pickle as p
 #initialize the stream transport simulation
 sTran = StreamTranSim('LittleSmoky')
 FieldData = {}
+#cacluate groundwater inflow?
 run_tran = 1
+#calculate groundwater age?
 calc_age = 1
 
 
@@ -34,7 +47,7 @@ E = 760. #mean sampling elevation
 E_gw = 878. #mean sampling elevation for now
 
 #initialize tracer input time series.  
-#make tracer input time series (cfc,sf6,He)
+#make tracer input time series (cfc,sf6,He) using atmospheric equilibrium
 df_cfc_atm = cfc.get_gas_conc()
 P = cfc.lapse_rate(E)
 P_gw = cfc.lapse_rate(E_gw)
@@ -61,11 +74,12 @@ sTran.C_tau = C_tau
 #######################################################################
 #tracer info
 #######################################################################
-
+#BELOW TRACERS ARE ADDED TO THE SIMULATION.  ADDITIONAL TRACERS CAN BE ADDED OR REMOVED AT WILL.  
+#TRACERS ARE KEYED BY THEIR NAME, SO THE NAME IS IMPORTANT, THE ORDER IS NOT...
 ##################################
 #tracer - 1
 tracer = 'Rn'
-k_exch = 2. #m/d  #THIS NEEDS TO BE ESTIMATED BETTER...
+k_exch = 2. #m/d  #THIS IS ESTIMATED BETTER USING RAYMOND ET AL. 2012 JUST BEFORE SIMULATION...
 
 k_exch = k_exch/60./60./24. #m/s
 lamma = 3.8235/60./60./24. #s-1
@@ -248,8 +262,7 @@ sTran.Tracers[tracer].error_perc = error_perc
 #######################################################################
 L = 172000.  #m
 nx = 1.e4   #number of cells
-E = 2e-3/60./60./24. #m/s - think this is just garbage.
-Q_us = 1.0
+E = 2e-3/60./60./24. #m/s Q_us = 1.0
 
 # geometery visually estimated at sampling locations
 w = (np.array([0.,31.,54.8,65.1,99.3,121.2,149.2,172.])*1000.,\

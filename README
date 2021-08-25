@@ -1,0 +1,18 @@
+StreamTran model for simulating 1d transport in streams subject to atmospheric equilibration, groundwater inflow, first-order reaction.
+
+It is especially suited for transport of environmental tracers such as radon, noble gases, dissolved CFC's, SF6, etc.
+
+Dependencies:
+
+    requies the tracer_tools package to be in the python path - lots and lots of tracer utilities in this package
+    requires the fipy package
+    requires the lmfit package
+    -> things work better if fipy and lmfit can be installed using your system package manager.
+
+An example and template input deck (moderately well commented) can be found in the examp directory.
+
+StreamTran and tracer_tools written by:
+
+W. Payton Gardner
+Dept. of Geosciences
+University of Montana
