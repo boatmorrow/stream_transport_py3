@@ -188,6 +188,7 @@ class StreamTranSim(object):
             C = CellVariable(name="Concentration",mesh=self.mesh,value=self.Tracers[kk].C_us) #steady state
             #interpolate the groundwater concentration...
             if self.tau_flag:
+                self.SimRes.print_tau=True
                 if self.Tracers[kk].has_age:
                     Cgwi = InterpolateGwConcTau(self.C_tau[0],self.C_tau[1],len(self.C_tau[0]),self.nx,self.L,self.C_t,kk,self.t_i,self.Tracers[kk].lamma,mod_type=self.age_dist)
                     Ctaui = InterpolateGwConc(self.C_tau[0],self.C_tau[1],len(self.C_tau[0]),self.nx,self.L)
@@ -401,6 +402,7 @@ class SimRes(object):
         self.Pump = []
         self.tracers = {} #dictionary of TracerRes objects
         self.Ctaui = []
+        self.print_age = False
 
     def add_tracer(self,name):
         self.tracers[name]=TracerRes(name)
@@ -413,8 +415,12 @@ class SimRes(object):
         dest_file = wb_name
         ws1 = wb.active
         ws1.title = 'model results'
-        output_vars = ['x','Q','d','w','q_lin','Ctaui','Q_trib']
-        output_var_notes = ['Distance Downstream','Modeled Discharge (l^3/t)','Interpolated Depth (l)','Interpolated Width (l)','Groundwater Lateral flux (l/t)','Estmated Mean Groundwater Age (days)','Tributary Discharge (l^3/t)']
+        if self.print_age:
+            output_vars = ['x','Q','d','w','q_lin','Ctaui','Q_trib']
+            output_var_notes = ['Distance Downstream','Modeled Discharge (l^3/t)','Interpolated Depth (l)','Interpolated Width (l)','Groundwater Lateral flux (l/t)','Estmated Mean Groundwater Age (days)','Tributary Discharge (l^3/t)']
+        else:
+            output_vars = ['x','Q','d','w','q_lin','Q_trib']
+            output_var_notes = ['Distance Downstream','Modeled Discharge (l^3/t)','Interpolated Depth (l)','Interpolated Width (l)','Groundwater Lateral flux (l/t)','Tributary Discharge (l^3/t)']
         li = len(output_vars)+1
         
         for i in range(1,li):
