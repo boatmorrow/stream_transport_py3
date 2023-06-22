@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 import pandas as pd
 import datetime as dt
 import pdb
-import convolution_integral as ci
+import tracer_tools.convolution_integral as ci
 import lmfit as lm
 
 def CreateLatFlowVec(ql,nx):
