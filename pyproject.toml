@@ -22,7 +22,8 @@ dependencies = [
     "scipy",
     "xlrd",
     "lmfit",
-    "fipy"
+    "fipy",
+    "openpyxl"
 ]
 
 [project.urls]

@@ -1,8 +1,8 @@
 from StreamTran import *
 from pylab import *
 import numpy as np
-import cfc_tools as cfc
-from get_atm_conc import convert2aqueous
+import tracer_tools.cfc_tools as cfc
+from tracer_tools.get_atm_conc import convert2aqueous
 import pdb
 
 
