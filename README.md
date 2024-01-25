@@ -5,16 +5,15 @@ It is especially suited for transport of environmental tracers such as radon, no
 Dependencies:
 
 Python package requirements:
-numpy,scipy,matplotlib
+numpy
+scipy
+matplotlib
 pandas
 lmfit
-iapws
-xlrd
-tkinter
-tracer_tools package to be in the python path - lots and lots of tracer utilities in this package
-https://github.com/boatmorrow/tracer_tools_py3
+fipy
+tracer_tools [package info.](https://github.com/boatmorrow/tracer_tools_py3)
 
-    -> things work better if all packages besides tracer_tools can be installed using your system package manager.
+    -> The package installation should take care of everything except tracer_tools, which is not available on a package manger yet.  Install the tracer_tools package according to the information for that package.
 
 An example and template input deck (moderately well commented) can be found in the examp directory.
 
@@ -27,11 +26,13 @@ Clone the git repository.  For example, using git at the terminal
 
 git clone https://github.com/boatmorrow/stream_transport_py3
 
+This will add the stream_transport_py3 directory.
 
-This will add a directory with the StreamTran repository.  Now, add the downloaded repository directory to your PYTHONPATH and PATH variables.  For example, using a bash terminal:
+        cd /path/to/clone/location/stream_transport_py3
 
-export PYTHONPATH=path/to/repository:$PYTHONPATH 
-export PATH=path/to/repository:$PATH 
+Install the package:
+
+        pip install .
 
 StreamTran and tracer_tools written by:
 

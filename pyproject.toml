@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "StreamTran"
+version = "0.0.1"
+authors = [
+  { name="W. Payton Gardner", email="payton.gardner@umontana.edu" },
+]
+description = "A model for the 1-d transport of tracers in a steam."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GPL",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "xlrd",
+    "lmfit",
+    "fipy"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/boatmorrow/StreamTran"
+"Bug Tracker" = "https://github.com/boatmorrow/StreamTran/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+  # directory containing all the packages (e.g.  src/mypkg1, src/mypkg2)
+include-package-data = true
+
+packages = ["StreamTran"]
+  # tracer_tools.module corresponds to tracer_tools/module.py
+
+#[tool.setuptools.packages.find]
+#where = ["src"]
