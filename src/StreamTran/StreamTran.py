@@ -1,6 +1,5 @@
 import numpy as np
-from fipy import *
-from pylab import *
+import fipy as fp
 from scipy.interpolate import interp1d
 import pandas as pd
 import datetime as dt
@@ -12,7 +11,7 @@ def CreateLatFlowVec(ql,nx):
     ''' returns a vector of length nx (full grid - L/dx), with len(ql) evenly spaced steps, each step having the value ql_i.'''
     numSteps = len(ql)
     stepL = int(round(nx/numSteps))
-    stepsI = arange(1,numSteps+1)*stepL
+    stepsI = np.arange(1,numSteps+1)*stepL
     q = np.zeros(int(nx)) 
     ict = 0
     for i in range(len(q)):
@@ -45,7 +44,7 @@ def ExtractLmParamVec(m,name):
     '''extracts an array x from all entries in params m with name 'name_i'. Expects the name to be split by an underscore.'''
 
     x = []  
-    for k in sort(list(m.keys())):
+    for k in np.sort(list(m.keys())):
         if k.split('_')[0] == name:
             x.append(m[k].value)
     x = np.array(x)
@@ -57,14 +56,14 @@ def InterpolateMatrialValue(x,V,nx,L):
     f = interp1d(x,V)
     dx = L/nx
     #ghetto way to do this.  Should figure out how get x defined from mesh.
-    xnew = arange(0,L,dx)
+    xnew = np.arange(0,L,dx)
     V_i = f(xnew)
     return V_i
 
 def InterpolateTribPump(x,Q_t,nx,L):
     ''' Adds a pump discharge or Trib discharge for each pair of distance(x), discharge (Q_t) measurements.  Return a vector of length nx, with pump or trib discharge at the nearest mesh location.'''
     dx = L/nx
-    xnew = arange(0,L,dx)
+    xnew = np.arange(0,L,dx)
     Q = np.zeros(len(xnew))
     for i in range(len(x)):
         Q[np.argmin(abs(x[i]-xnew))]=Q_t[i]
@@ -75,7 +74,7 @@ def InterpolateGwConc(x,C_gw,numSteps,nx,L):
     # first nearest neighbor interpolation for all groundwater steps...
     nx = int(nx)
     stepL = int(round(L/numSteps))
-    stepsI = arange(1,numSteps+1)*stepL
+    stepsI = np.arange(1,numSteps+1)*stepL
     stepsI[-1] = int(round(L))
     stepsM = stepsI/2.
     C_gw_s = np.zeros(numSteps)
@@ -130,7 +129,7 @@ class StreamTranSim(object):
         self.C_t = pd.DataFrame() #historical preciptation input for tracers
         self.SimRes = SimRes()
         self.Tracers = {}
-        self.mesh = Grid1D(nx = self.nx, dx = self.L/self.nx)
+        self.mesh = fp.Grid1D(nx = self.nx, dx = self.L/self.nx)
         self.tau_flag = 0 #are groundwater concentrations to be calculated from mean age
         self.C_tau = ([0.],[0.]) #groundwater age should be independent of tracer concentration
         self.age_dist = 'exponential'
@@ -140,7 +139,7 @@ class StreamTranSim(object):
         '''Calculate the river discharge given the tracer simulation class (TS)'''
         #set up simulation
         #discretization and interpolation
-        mesh = Grid1D(nx = self.nx, dx = self.L/self.nx)
+        mesh = fp.Grid1D(nx = self.nx, dx = self.L/self.nx)
         self.mesh = mesh
         A_i = InterpolateMatrialValue(self.Ai[0],self.Ai[1],self.nx,self.L)
         w_i = InterpolateMatrialValue(self.wi[0],self.wi[1],self.nx,self.L)
@@ -151,24 +150,24 @@ class StreamTranSim(object):
         self.SimRes.x = mesh.cellCenters.value[0,:]
         Q_trib = InterpolateTribPump(self.Q_trib[0],self.Q_trib[1],self.nx,self.L)
         Pump = InterpolateTribPump(self.Pump[0],self.Pump[1],self.nx,self.L)
-        self.SimRes.Q_trib = CellVariable(name="Tributary Flow",mesh=self.mesh,value=Q_trib)
-        self.SimRes.Pump = CellVariable(name="Pump",mesh=self.mesh,value=Pump)
-        self.SimRes.q_lin = CreateLatFlowVec(self.q_lin,self.nx)
-        self.SimRes.q_lo = CreateLatFlowVec(self.q_lo,self.nx)
+        self.SimRes.Q_trib = fp.CellVariable(name="Tributary Flow",mesh=self.mesh,value=Q_trib)
+        self.SimRes.Pump = fp.CellVariable(name="Pump",mesh=self.mesh,value=Pump)
+        self.SimRes.q_lin = fp.CreateLatFlowVec(self.q_lin,self.nx)
+        self.SimRes.q_lo = fp.CreateLatFlowVec(self.q_lo,self.nx)
         
         #matrial property cell variables
-        self.SimRes.A = CellVariable(name="StreamXCArea",mesh=self.mesh,value=A_i)
-        self.SimRes.d = CellVariable(name="StreamDepth",mesh=self.mesh,value=d_i)
-        self.SimRes.w = CellVariable(name="StreamWidth",mesh=self.mesh,value=w_i)
+        self.SimRes.A = fp.CellVariable(name="StreamXCArea",mesh=self.mesh,value=A_i)
+        self.SimRes.d = fp.CellVariable(name="StreamDepth",mesh=self.mesh,value=d_i)
+        self.SimRes.w = fp.CellVariable(name="StreamWidth",mesh=self.mesh,value=w_i)
         #think gw discharges and pump/trib discharge should be cell variables...
-        self.SimRes.q_lin = CellVariable(name="GW_Discharge",mesh=self.mesh,value=self.SimRes.q_lin)
-        self.SimRes.q_lo = CellVariable(name="GW_Recharge",mesh=self.mesh,value=self.SimRes.q_lo)
+        self.SimRes.q_lin = fp.CellVariable(name="GW_Discharge",mesh=self.mesh,value=self.SimRes.q_lin)
+        self.SimRes.q_lo = fp.CellVariable(name="GW_Recharge",mesh=self.mesh,value=self.SimRes.q_lo)
 
         #dependent cell variables
-        Q = CellVariable(name="Discharge",mesh=mesh,value=self.Q_us)
+        Q = fp.CellVariable(name="Discharge",mesh=mesh,value=self.Q_us)
         Q.constrain(self.Q_us, mesh.facesLeft)
         Q.faceGrad.constrain(0.,mesh.facesRight)
-        eqD = PowerLawConvectionTerm(coeff=(1,),var=Q) ==  P*self.SimRes.w - E*self.SimRes.w + self.SimRes.q_lin*self.SimRes.w - self.SimRes.q_lo*self.SimRes.w + self.SimRes.Q_trib/self.mesh.dx - self.SimRes.Pump
+        eqD = fp.PowerLawConvectionTerm(coeff=(1,),var=Q) ==  P*self.SimRes.w - E*self.SimRes.w + self.SimRes.q_lin*self.SimRes.w - self.SimRes.q_lo*self.SimRes.w + self.SimRes.Q_trib/self.mesh.dx - self.SimRes.Pump
         eqD.solve(var=Q)
         self.SimRes.Q = Q
     
@@ -185,7 +184,7 @@ class StreamTranSim(object):
             self.SimRes.add_tracer(kk)
             #dependent cell variables
             #C = CellVariable(name="Concentration",mesh=self.mesh,value=self.Tracers[kk].C_us,hasOld=1)
-            C = CellVariable(name="Concentration",mesh=self.mesh,value=self.Tracers[kk].C_us) #steady state
+            C = fp.CellVariable(name="Concentration",mesh=self.mesh,value=self.Tracers[kk].C_us) #steady state
             #interpolate the groundwater concentration...
             if self.tau_flag:
                 self.SimRes.print_tau=True
@@ -199,9 +198,9 @@ class StreamTranSim(object):
             else:
                 Cgwi = InterpolateGwConc(self.Tracers[kk].C_gw[0],self.Tracers[kk].C_gw[1],len(self.q_lin),self.nx,self.L)
         
-            Cgwi = CellVariable(name="GW Concentration",mesh=self.mesh,value=Cgwi)
+            Cgwi = fp.CellVariable(name="GW Concentration",mesh=self.mesh,value=Cgwi)
             C_trib = InterpolateTribPump(self.Q_trib[0],self.Q_trib[2][kk],self.nx,self.L)
-            C_trib = CellVariable(name="Trib Concentration",mesh=self.mesh,value=C_trib)
+            C_trib = fp.CellVariable(name="Trib Concentration",mesh=self.mesh,value=C_trib)
             self.SimRes.tracers[kk].C_trib = C_trib
             self.SimRes.tracers[kk].Cgwi=Cgwi
 
@@ -212,7 +211,7 @@ class StreamTranSim(object):
 #            if disp_flag:
 #                eqT = PowerLawConvectionTerm((1.,),var=C) == DiffusionTerm(coeff=self.Tracers[kk].D*self.SimRes.w*self.SimRes.d/self.SimRes.Q, var=C) + self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q*self.SimRes.tracers[kk].Cgwi - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q,var=C) + self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q*self.Tracers[kk].C_atm + self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx*self.SimRes.tracers[kk].C_trib - ImplicitSourceTerm(coeff=self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.d/self.SimRes.Q*self.Tracers[kk].lamma,var=C)
 #            else:
-            eqT = PowerLawConvectionTerm((1.,),var=C) == self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q*self.SimRes.tracers[kk].Cgwi - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q,var=C) + self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q*self.Tracers[kk].C_atm + self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx*self.SimRes.tracers[kk].C_trib - ImplicitSourceTerm(coeff=self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.d/self.SimRes.Q*self.Tracers[kk].lamma,var=C) + ImplicitSourceTerm(coeff=self.E*self.SimRes.w,var=C) - ImplicitSourceTerm(coeff=self.P*self.SimRes.w,var=C)#need to add evaporation and precip.
+            eqT = fp.PowerLawConvectionTerm((1.,),var=C) == self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q*self.SimRes.tracers[kk].Cgwi - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q,var=C) + self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q*self.Tracers[kk].C_atm + self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx*self.SimRes.tracers[kk].C_trib - ImplicitSourceTerm(coeff=self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.d/self.SimRes.Q*self.Tracers[kk].lamma,var=C) + ImplicitSourceTerm(coeff=self.E*self.SimRes.w,var=C) - ImplicitSourceTerm(coeff=self.P*self.SimRes.w,var=C)#need to add evaporation and precip.
             eqT.solve(var=C)
             self.SimRes.tracers[kk].C = C
 
@@ -444,9 +443,7 @@ class SimRes(object):
                 ws1.cell(row=j,column=i,value=self.tracers[tk[i-li]].C.value[j-3])
                 
         wb.save(filename = dest_file)         
-
             
-
 class TracerRes(object):
     '''Modeled Tracer profiles'''
     def __init__(self,name):
