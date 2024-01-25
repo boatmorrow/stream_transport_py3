@@ -101,7 +101,6 @@ def InterpolateGwConcTau(x,tau,numSteps,nx,L,C_t,tracer_t,t_i,lamba,mod_type='ex
     for i in range(len(tau)):
         #C_t_c = ci.conv_int_fft(C_t,tracer_t,t_i,tau[i],lamba,mod_type=mod_type)
         #C_gw[i] = C_t_c[-1]
-        #pdb.set_trace()
         C_t_c = ci.conv_int_discrete(C_t,tracer_t,t_i,tau[i],lamba,mod_type=mod_type)
         C_gw[i] = C_t_c
     
@@ -124,7 +123,7 @@ class StreamTranSim(object):
         self.Q_us = 1. #upstream discharge
         self.P = 0. #precipitation
         self.E = 0. #evaporation
-        self.Q_trib = ([0.],[0.],[0.]) #location, discharge, concentration for tributaries
+        self.Q_trib = ([0.],[0.],{'tracer':[0.]}) #location, discharge, concentration for tributaries
         self.Pump = ([0.],[0.]) #location discharge for pumping
         self.C_t = pd.DataFrame() #historical preciptation input for tracers
         self.SimRes = SimRes()
@@ -152,8 +151,8 @@ class StreamTranSim(object):
         Pump = InterpolateTribPump(self.Pump[0],self.Pump[1],self.nx,self.L)
         self.SimRes.Q_trib = fp.CellVariable(name="Tributary Flow",mesh=self.mesh,value=Q_trib)
         self.SimRes.Pump = fp.CellVariable(name="Pump",mesh=self.mesh,value=Pump)
-        self.SimRes.q_lin = fp.CreateLatFlowVec(self.q_lin,self.nx)
-        self.SimRes.q_lo = fp.CreateLatFlowVec(self.q_lo,self.nx)
+        self.SimRes.q_lin = CreateLatFlowVec(self.q_lin,self.nx)
+        self.SimRes.q_lo = CreateLatFlowVec(self.q_lo,self.nx)
         
         #matrial property cell variables
         self.SimRes.A = fp.CellVariable(name="StreamXCArea",mesh=self.mesh,value=A_i)
@@ -167,7 +166,10 @@ class StreamTranSim(object):
         Q = fp.CellVariable(name="Discharge",mesh=mesh,value=self.Q_us)
         Q.constrain(self.Q_us, mesh.facesLeft)
         Q.faceGrad.constrain(0.,mesh.facesRight)
-        eqD = fp.PowerLawConvectionTerm(coeff=(1,),var=Q) ==  P*self.SimRes.w - E*self.SimRes.w + self.SimRes.q_lin*self.SimRes.w - self.SimRes.q_lo*self.SimRes.w + self.SimRes.Q_trib/self.mesh.dx - self.SimRes.Pump
+        eqD = fp.PowerLawConvectionTerm(coeff=(1,),var=Q) == \
+              P*self.SimRes.w - E*self.SimRes.w + self.SimRes.q_lin*self.SimRes.w\
+              - self.SimRes.q_lo*self.SimRes.w + self.SimRes.Q_trib/self.mesh.dx\
+              - self.SimRes.Pump
         eqD.solve(var=Q)
         self.SimRes.Q = Q
     
@@ -211,7 +213,17 @@ class StreamTranSim(object):
 #            if disp_flag:
 #                eqT = PowerLawConvectionTerm((1.,),var=C) == DiffusionTerm(coeff=self.Tracers[kk].D*self.SimRes.w*self.SimRes.d/self.SimRes.Q, var=C) + self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q*self.SimRes.tracers[kk].Cgwi - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q,var=C) + self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q*self.Tracers[kk].C_atm + self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx*self.SimRes.tracers[kk].C_trib - ImplicitSourceTerm(coeff=self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.d/self.SimRes.Q*self.Tracers[kk].lamma,var=C)
 #            else:
-            eqT = fp.PowerLawConvectionTerm((1.,),var=C) == self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q*self.SimRes.tracers[kk].Cgwi - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q,var=C) + self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q*self.Tracers[kk].C_atm + self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx*self.SimRes.tracers[kk].C_trib - ImplicitSourceTerm(coeff=self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx,var=C) - ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.d/self.SimRes.Q*self.Tracers[kk].lamma,var=C) + ImplicitSourceTerm(coeff=self.E*self.SimRes.w,var=C) - ImplicitSourceTerm(coeff=self.P*self.SimRes.w,var=C)#need to add evaporation and precip.
+            eqT = fp.PowerLawConvectionTerm((1.,),var=C) == \
+                self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q*self.SimRes.tracers[kk].Cgwi \
+                - fp.ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.q_lin/self.SimRes.Q,var=C) \
+                - fp.ImplicitSourceTerm(coeff=self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q,var=C) \
+                + self.SimRes.w*self.Tracers[kk].k/self.SimRes.Q*self.Tracers[kk].C_atm \
+                + self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx*self.SimRes.tracers[kk].C_trib \
+                - fp.ImplicitSourceTerm(coeff=self.SimRes.Q_trib/self.SimRes.Q/self.mesh.dx,var=C) \
+                - fp.ImplicitSourceTerm(coeff=self.SimRes.w*self.SimRes.d/self.SimRes.Q*self.Tracers[kk].lamma,var=C) \
+                + fp.ImplicitSourceTerm(coeff=self.E*self.SimRes.w,var=C) \
+                - fp.ImplicitSourceTerm(coeff=self.P*self.SimRes.w,var=C)
+                #need to add evaporation and precip.
             eqT.solve(var=C)
             self.SimRes.tracers[kk].C = C
 
