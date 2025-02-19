@@ -6,11 +6,12 @@ import datetime as dt
 import pdb
 import tracer_tools.convolution_integral as ci
 import lmfit as lm
+from math import ceil
 
 def CreateLatFlowVec(ql,nx):
     ''' returns a vector of length nx (full grid - L/dx), with len(ql) evenly spaced steps, each step having the value ql_i.'''
     numSteps = len(ql)
-    stepL = int(round(nx/numSteps))
+    stepL = int(ceil(nx/numSteps))
     stepsI = np.arange(1,numSteps+1)*stepL
     q = np.zeros(int(nx)) 
     ict = 0
@@ -75,7 +76,7 @@ def InterpolateGwConc(x,C_gw,numSteps,nx,L):
     nx = int(nx)
     stepL = int(round(L/numSteps))
     stepsI = np.arange(1,numSteps+1)*stepL
-    stepsI[-1] = int(round(L))
+    stepsI[-1] = int(ceil(L))
     stepsM = stepsI/2.
     C_gw_s = np.zeros(numSteps)
     for i in range(numSteps):
@@ -234,7 +235,7 @@ class StreamTranSim(object):
             self.q_lin = np.exp(self.q_lin)
         mm = len(self.q_lin)
         print('Current Params:')
-        print(self.q_lin)
+        print('Gain',self.q_lin)
         self.CalcTran()
         xd = DischData[0]
         yd = DischData[1]
@@ -257,6 +258,43 @@ class StreamTranSim(object):
             #self.SimRes.resid = np.append(self.SimRes.resid,yd-yms)
         nn = len(self.SimRes.resid)
         if mm>nn:
+            print('number of estimated groundwater inflow steps greater than constraining data, reduce number of steps.')    
+        print('residual = ' + str(np.linalg.norm(self.SimRes.resid)))
+        return self.SimRes.resid
+
+    def MisfitNetFlux(self,m,tracers,FieldData,DischData,use_disch=1.,DischargeError=0.10,log_flag=1):
+        '''Calculate the misfit between modeled and the observed data for the list of tracers in tracers.  FieldData is a dictionary keyed by the tracer name with 'tracer':(xd,yd). Returns the redisidual for a least squares inversion.'''
+        self.q_lin = ExtractLmParamVec(m,'qlin')
+        self.q_lo = ExtractLmParamVec(m,'qlo')
+        if log_flag:
+            self.q_lin = np.exp(self.q_lin)
+            self.q_lo = np.exp(self.q_lo)
+        mm = len(self.q_lin)+len(self.q_lo)
+        print('Current Params:')
+        print('Gain',self.q_lin)
+        print('Loss',self.q_lo)
+        self.CalcTran()
+        xd = DischData[0]
+        yd = DischData[1]
+        xm = self.mesh.cellCenters()[0,:]
+        xm[0] = 0.
+        xm[-1] = self.L
+        ym = self.SimRes.Q.value
+        #calculatate the misfit given the current groundwater flux
+        if use_disch:
+            f = interp1d(xm,ym,kind='linear')
+            yms = f(xd)
+            self.SimRes.resid = (yd-yms)/(DischargeError*np.mean(yd))
+        for tracer in tracers:
+            xd = FieldData[tracer][0]
+            yd = FieldData[tracer][1]
+            ym = self.SimRes.tracers[tracer].C.value
+            f = interp1d(xm,ym,kind='linear')
+            yms = f(xd)
+            self.SimRes.resid = np.append(self.SimRes.resid,(yd-yms)/(self.Tracers[tracer].error_perc*np.mean(yd)))
+            #self.SimRes.resid = np.append(self.SimRes.resid,yd-yms)
+        nn = len(self.SimRes.resid)
+        if mm>nn+len(yd):
             print('number of estimated groundwater inflow steps greater than constraining data, reduce number of steps.')    
         print('residual = ' + str(np.linalg.norm(self.SimRes.resid)))
         return self.SimRes.resid
@@ -353,6 +391,31 @@ class StreamTranSim(object):
         self.q_lin = ExtractLmParamVec(fit.params,'qlin')
         if log_flag:
             self.q_lin = np.exp(self.q_lin)
+        self.SimRes.fit_solution = fit
+        #run a last best solution
+        self.CalcTran()
+
+    def CalcGwNetExchange(self,tracers,FieldData,DischData,DischargeError=0.10,use_disch=1,log_flag=1):
+        '''Estimate the best groundwater inflow to match the given stream concentrations.'''
+        qlin = self.q_lin
+        qlo = self.q_lo
+        lb = 0.
+        ub = 1.
+        if log_flag:
+            qlin = np.log(qlin)
+            qlo = np.log(qlo)
+            lb = -20
+            up = 0.
+        m = CreateLmParams(qlin,'qlin',lb,ub)
+        m = AppendLmParams(m,qlo,'qlo',lb,ub)
+        mini = lm.Minimizer(self.MisfitNetFlux,m,fcn_args=(tracers,FieldData,DischData),fcn_kws={'DischargeError':DischargeError,'use_disch':use_disch,'log_flag':log_flag})
+        fit = mini.minimize(params=m,ftol=1.e-5,gtol=1.e-5,xtol=1e-5)
+        print(lm.fit_report(fit))
+        self.q_lin = ExtractLmParamVec(fit.params,'qlin')
+        self.q_lo = ExtractLmParamVec(fit.params,'qlo')
+        if log_flag:
+            self.q_lin = np.exp(self.q_lin)
+            self.q_lo = np.exp(self.q_lo)
         self.SimRes.fit_solution = fit
         #run a last best solution
         self.CalcTran()
