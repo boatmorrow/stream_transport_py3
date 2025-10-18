@@ -170,7 +170,7 @@ class StreamTranSim(object):
         eqD = fp.PowerLawConvectionTerm(coeff=(1,),var=Q) == \
               P*self.SimRes.w - E*self.SimRes.w + self.SimRes.q_lin*self.SimRes.w\
               - self.SimRes.q_lo*self.SimRes.w + self.SimRes.Q_trib/self.mesh.dx\
-              - self.SimRes.Pump
+              - self.SimRes.Pump/self.mesh.dx
         eqD.solve(var=Q)
         self.SimRes.Q = Q
     
